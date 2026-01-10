@@ -120,7 +120,11 @@ export class BoardDO extends DurableObject<Env> {
     this.credentialService = new CredentialService(
       this.sql,
       env.ENCRYPTION_KEY,
-      generateId
+      generateId,
+      {
+        GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+      }
     );
 
     this.boardService = new BoardService(

@@ -2,6 +2,7 @@ import { jsonResponse } from '../utils/response';
 import { logger } from '../utils/logger';
 import { CREDENTIAL_TYPES } from '../constants';
 import { transformBoard, transformColumn, transformTask, toCamelCase } from '../utils/transformations';
+import { getCredentialTypeForUrlPattern, type UrlPatternType } from '../mcp/AccountMCPRegistry';
 import type { CredentialService } from './CredentialService';
 
 interface TaskRow {
@@ -429,6 +430,7 @@ export class BoardService {
         if (match) {
           try {
             const metadata = await this.fetchLinkMetadataFromMCP(
+              boardId,
               server.name,
               server.credentialId,
               patternDef.fetchTool,
@@ -454,21 +456,20 @@ export class BoardService {
    * Fetch metadata from an MCP server for a matched URL
    */
   private async fetchLinkMetadataFromMCP(
+    boardId: string,
     _serverName: string,
-    credentialId: string | undefined,
+    _credentialId: string | undefined,
     fetchTool: string,
     type: string,
     _url: string,
     match: RegExpMatchArray
   ): Promise<{ type: string; title: string; id: string } | null> {
-    let accessToken: string | null = null;
-    if (credentialId) {
-      const credRow = this.credentialService.getCredentialRowById(credentialId);
-      if (credRow) {
-        accessToken = await this.credentialService.decrypt(credRow.encrypted_value);
-      }
+    const credentialType = getCredentialTypeForUrlPattern(type as UrlPatternType);
+    if (!credentialType) {
+      return null;
     }
 
+    const accessToken = await this.credentialService.getValidAccessToken(boardId, credentialType);
     if (!accessToken) {
       return null;
     }

@@ -631,3 +631,18 @@ export function getAdditionalCredentialKeys(serverNames: string[]): string[] {
 
   return Array.from(keys);
 }
+
+/**
+ * Get credential type for a URL pattern type.
+ * Finds which account's MCP has this pattern and returns that account's credentialType.
+ */
+export function getCredentialTypeForUrlPattern(patternType: UrlPatternType): string | undefined {
+  for (const account of ACCOUNT_REGISTRY) {
+    for (const mcp of account.mcps) {
+      if (mcp.urlPatterns?.some(p => p.type === patternType)) {
+        return account.credentialType;
+      }
+    }
+  }
+  return undefined;
+}

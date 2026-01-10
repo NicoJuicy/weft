@@ -1,20 +1,35 @@
 import { encryptValue, decryptValue } from '../utils/crypto';
 import { jsonResponse } from '../utils/response';
 import { toCamelCase } from '../utils/transformations';
+import { logger } from '../utils/logger';
+import { getAccountByCredentialType } from '../mcp/AccountMCPRegistry';
+
+// Buffer time (5 minutes) before expiry to trigger refresh
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+// OAuth client credentials for token refresh
+// Add new providers here as they're added
+interface OAuthEnv {
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+}
 
 export class CredentialService {
   private sql: SqlStorage;
   private encryptionKey: string;
   private generateId: () => string;
+  private oauthEnv: OAuthEnv;
 
   constructor(
     sql: SqlStorage,
     encryptionKey: string,
-    generateId: () => string
+    generateId: () => string,
+    oauthEnv: OAuthEnv = {}
   ) {
     this.sql = sql;
     this.encryptionKey = encryptionKey;
     this.generateId = generateId;
+    this.oauthEnv = oauthEnv;
   }
 
   /**
@@ -117,6 +132,73 @@ export class CredentialService {
 
     if (!credential) return null;
     return this.decrypt(credential.encrypted_value);
+  }
+
+  /**
+   * Get a valid access token, refreshing if expired.
+   * Centralizes all OAuth token refresh logic.
+   */
+  async getValidAccessToken(
+    boardId: string,
+    credentialType: string
+  ): Promise<string | null> {
+    const credential = this.sql.exec(
+      'SELECT encrypted_value, metadata FROM board_credentials WHERE board_id = ? AND type = ?',
+      boardId,
+      credentialType
+    ).toArray()[0] as { encrypted_value: string; metadata: string | null } | undefined;
+
+    if (!credential) return null;
+
+    let accessToken = await this.decrypt(credential.encrypted_value);
+    const metadata: { refresh_token?: string; expires_at?: string } = credential.metadata
+      ? JSON.parse(credential.metadata)
+      : {};
+
+    if (metadata.refresh_token && metadata.expires_at) {
+      const expiresAtMs = new Date(metadata.expires_at).getTime();
+      const needsRefresh = Date.now() > expiresAtMs - TOKEN_REFRESH_BUFFER_MS;
+
+      if (needsRefresh) {
+        const account = getAccountByCredentialType(credentialType);
+        if (account?.refreshToken) {
+          const { clientId, clientSecret } = this.getOAuthClientCredentials(account.id);
+
+          if (clientId && clientSecret) {
+            try {
+              logger.credential.info('Refreshing expired OAuth token', { credentialType });
+
+              const newTokenData = await account.refreshToken(
+                metadata.refresh_token,
+                clientId,
+                clientSecret
+              );
+
+              accessToken = newTokenData.access_token;
+              const newExpiresAt = new Date(
+                Date.now() + (newTokenData.expires_in || 3600) * 1000
+              ).toISOString();
+
+              await this.updateCredentialValue(
+                boardId,
+                credentialType,
+                newTokenData.access_token,
+                { expires_at: newExpiresAt }
+              );
+
+              logger.credential.info('OAuth token refreshed successfully', { credentialType });
+            } catch (e) {
+              logger.credential.error('Failed to refresh OAuth token', {
+                credentialType,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return accessToken;
   }
 
   /**
@@ -245,6 +327,25 @@ export class CredentialService {
       type
     ).toArray()[0] as { id: string } | undefined;
     return row?.id;
+  }
+
+  /**
+   * Get OAuth client credentials for an account
+   * Add new providers here as they're added
+   */
+  private getOAuthClientCredentials(accountId: string): {
+    clientId: string | undefined;
+    clientSecret: string | undefined;
+  } {
+    switch (accountId) {
+      case 'google':
+        return {
+          clientId: this.oauthEnv.GOOGLE_CLIENT_ID,
+          clientSecret: this.oauthEnv.GOOGLE_CLIENT_SECRET,
+        };
+      default:
+        return { clientId: undefined, clientSecret: undefined };
+    }
   }
 
   /**

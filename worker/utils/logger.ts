@@ -59,4 +59,5 @@ export const logger = {
   mcpOAuth: createLogger('MCPOAuth'),
   sandbox: createLogger('Sandbox'),
   board: createLogger('BoardService'),
+  credential: createLogger('CredentialService'),
 };
