@@ -366,6 +366,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
         tool?: string;
         action?: string;
         data?: Record<string, unknown>;
+        toolResults?: Record<string, unknown>;
       } | undefined;
 
       const toolName = checkpointData?.tool || '';
@@ -390,6 +391,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
           tool={toolName}
           action={checkpointData?.action || ''}
           data={dataObj}
+          toolResults={checkpointData?.toolResults}
           onApprove={handleApproveCheckpoint}
           onRequestChanges={handleRequestChanges}
           onCancel={handleCancelCheckpoint}

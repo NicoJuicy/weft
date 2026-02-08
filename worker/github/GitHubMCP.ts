@@ -325,10 +325,19 @@ export class GitHubMCPServer extends HostedMCPServer {
       state: string;
       body: string | null;
       html_url: string;
+      additions?: number;
+      deletions?: number;
+      changed_files?: number;
       user?: { login?: string };
       head?: { ref?: string };
       base?: { ref?: string };
     };
+
+    // Fetch full unified diff (file patches from /files can be truncated)
+    const diffResponse = await this.githubFetch(url, {
+      headers: { Accept: 'application/vnd.github.v3.diff' },
+    });
+    const diff = await diffResponse.text();
 
     const result = {
       number: data.number,
@@ -339,6 +348,12 @@ export class GitHubMCPServer extends HostedMCPServer {
       author: data.user?.login || '',
       head: data.head?.ref || '',
       base: data.base?.ref || '',
+      diff,
+      stats: {
+        files: data.changed_files ?? 0,
+        additions: data.additions ?? 0,
+        deletions: data.deletions ?? 0,
+      },
     };
 
     return {
@@ -367,7 +382,7 @@ export class GitHubMCPServer extends HostedMCPServer {
       previous_filename?: string;
     }>;
 
-    const files = data.map((file) => ({
+    const result = data.map((file) => ({
       filename: file.filename,
       status: file.status,
       additions: file.additions,
@@ -376,26 +391,6 @@ export class GitHubMCPServer extends HostedMCPServer {
       patch: file.patch,
       previous_filename: file.previous_filename,
     }));
-
-    // Assemble a unified diff from individual file patches.
-    const diff = data
-      .filter((f) => f.patch)
-      .map((f) => {
-        const a = f.previous_filename || f.filename;
-        const b = f.filename;
-        return `diff --git a/${a} b/${b}\n--- a/${a}\n+++ b/${b}\n${f.patch}`;
-      })
-      .join('\n');
-
-    const result = {
-      files,
-      diff,
-      stats: {
-        files: files.length,
-        additions: files.reduce((s, f) => s + f.additions, 0),
-        deletions: files.reduce((s, f) => s + f.deletions, 0),
-      },
-    };
 
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

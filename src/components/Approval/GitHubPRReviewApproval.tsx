@@ -138,6 +138,7 @@ function formatLineRef(comment: DiffComment): string {
 export function GitHubPRReviewApproval({
   action,
   data,
+  toolResults,
   onApprove,
   onRequestChanges,
   onCancel,
@@ -154,6 +155,16 @@ export function GitHubPRReviewApproval({
     }
   } else {
     reviewData = data as PRReviewApprovalData;
+  }
+
+  // Prefer cached getPullRequest result for diff/stats (agent may truncate large diffs)
+  const prResult = toolResults?.['GitHub__getPullRequest'] as PRReviewApprovalData | undefined;
+  if (prResult) {
+    if (prResult.diff) reviewData.diff = prResult.diff;
+    if (prResult.stats) reviewData.stats = prResult.stats;
+    if (!reviewData.author && prResult.author) reviewData.author = prResult.author;
+    if (!reviewData.baseBranch && prResult.base) reviewData.baseBranch = prResult.base;
+    if (!reviewData.headBranch && prResult.head) reviewData.headBranch = prResult.head;
   }
 
   const {

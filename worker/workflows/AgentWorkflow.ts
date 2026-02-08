@@ -332,6 +332,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       const childTaskTitles: string[] = []; // Track titles for summary
       const childTasksInfo: Array<{ id: string; title: string }> = [];
       const approvedTools = new Set<string>();
+      const toolResultsCache: Record<string, unknown> = {};
 
       while (!done && turnIndex < 50) {
         const currentTurnIndex = turnIndex;
@@ -481,6 +482,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                     tool: approvalArgs.tool,
                     action: approvalArgs.action,
                     data: approvalArgs.data,
+                    toolResults: toolResultsCache,
                   },
                 });
                 await addLog('info', `Requesting approval: ${approvalArgs.action}`, toolStepId);
@@ -815,6 +817,11 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
               );
 
               if (toolResultData.success && toolResultData.result) {
+                const structured = (toolResultData.result as { structuredContent?: unknown })?.structuredContent;
+                if (structured) {
+                  toolResultsCache[toolUse.name] = structured;
+                }
+
                 const artifact = this.extractArtifact(toolUse.name, toolResultData.result);
                 if (artifact) {
                   // Dedupe overlapping URLs, keep the more specific one.

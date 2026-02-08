@@ -19,6 +19,7 @@ export interface ApprovalViewProps {
   tool: string;
   action: string;
   data: Record<string, unknown>;
+  toolResults?: Record<string, unknown>;
   onApprove: (responseData?: Record<string, unknown>) => void;
   onRequestChanges: (feedback: string) => void;
   onCancel: () => void;

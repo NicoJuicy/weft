@@ -314,12 +314,12 @@ GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
 \`\`\`
 
 **Reviewing pull requests:**
-1. Fetch PR metadata and changed files:
+1. Fetch PR metadata (includes full unified diff and stats):
 \`\`\`
 GitHub__getPullRequest({ owner: "...", repo: "...", pullNumber: 123 })
-GitHub__listPullRequestFiles({ owner: "...", repo: "...", pullNumber: 123 })
 \`\`\`
-listPullRequestFiles returns \`structuredContent.diff\` (unified diff) and \`structuredContent.stats\`.
+getPullRequest returns \`structuredContent.diff\` (full unified diff) and \`structuredContent.stats\`.
+Optionally call \`listPullRequestFiles\` for per-file metadata.
 2. Request approval using the diff and stats from step 1:
 \`\`\`
 request_approval({

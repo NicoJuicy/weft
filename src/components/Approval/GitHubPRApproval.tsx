@@ -34,6 +34,7 @@ interface PRApprovalData {
 export function GitHubPRApproval({
   action,
   data,
+  toolResults,
   onApprove,
   onRequestChanges,
   onCancel,
@@ -52,6 +53,13 @@ export function GitHubPRApproval({
     }
   } else {
     prData = data as PRApprovalData;
+  }
+
+  // Prefer cached getDiff result for diff/stats (agent may truncate large diffs)
+  const diffResult = toolResults?.['Sandbox__getDiff'] as PRApprovalData | undefined;
+  if (diffResult) {
+    if (diffResult.diff) prData.diff = diffResult.diff;
+    if (diffResult.stats) prData.stats = diffResult.stats;
   }
 
   const {
