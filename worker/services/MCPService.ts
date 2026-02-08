@@ -1,4 +1,11 @@
 import { MCPClient, type MCPServerConfig } from '../mcp/MCPClient';
+import {
+  getAccountById,
+  getMCPDefinition,
+  getMCPTools,
+  getAccountForMCPName,
+  getMCPByName,
+} from '../mcp/AccountMCPRegistry';
 import { jsonResponse } from '../utils/response';
 import { toCamelCase } from '../utils/transformations';
 import type { CredentialService } from './CredentialService';
@@ -99,8 +106,6 @@ export class MCPService {
     accountId: string;
     mcpId: string;
   }): Promise<Response> {
-    const { getAccountById, getMCPDefinition, getMCPTools } = await import('../mcp/AccountMCPRegistry');
-
     const account = getAccountById(data.accountId);
     if (!account) {
       return jsonResponse({
@@ -253,8 +258,6 @@ export class MCPService {
     }
 
     if (server.type === 'hosted') {
-      const { getAccountForMCPName, getMCPByName, getMCPTools } = await import('../mcp/AccountMCPRegistry');
-
       const account = getAccountForMCPName(server.name);
       const mcp = getMCPByName(server.name);
 

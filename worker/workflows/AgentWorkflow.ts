@@ -27,6 +27,7 @@ import {
 } from '../mcp/AccountMCPRegistry';
 import { MCPClient, type MCPServerConfig } from '../mcp/MCPClient';
 import { logger } from '../utils/logger';
+import { CREDENTIAL_TYPES } from '../constants';
 import type { BoardDO } from '../BoardDO';
 
 // Constants
@@ -39,7 +40,6 @@ export interface AgentWorkflowParams {
   taskId: string;
   boardId: string;
   taskDescription: string;
-  anthropicApiKey: string;
   // Scheduled run parameters (optional)
   isScheduledRun?: boolean;
   runId?: string;
@@ -155,7 +155,7 @@ function formatToolName(toolName: string): string {
 export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflowParams> {
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
-    const { planId, boardId, taskDescription, anthropicApiKey } = params;
+    const { planId, boardId, taskDescription } = params;
     // Scheduled run parameters
     const isScheduledRun = params.isScheduledRun ?? false;
     const runId = params.runId;
@@ -241,6 +241,11 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
               })),
             });
           }
+        }
+
+        const anthropicApiKey = await stub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
+        if (!anthropicApiKey) {
+          throw new Error('Anthropic API key not configured');
         }
 
         const credentials: Record<string, string | undefined> = {
@@ -645,7 +650,6 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                           taskId: childTaskId,
                           boardId,
                           taskDescription: fullTaskDescription,
-                          anthropicApiKey: mcpConfig.credentials.anthropicApiKey!,
                           // Child tasks can also create grandchildren if needed
                           isScheduledRun: false, // Child workflows are not scheduled runs
                           targetColumnId, // Pass through for potential grandchildren

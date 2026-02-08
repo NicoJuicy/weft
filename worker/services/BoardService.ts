@@ -3,6 +3,9 @@ import { logger } from '../utils/logger';
 import { CREDENTIAL_TYPES } from '../constants';
 import { transformBoard, transformColumn, transformTask, toCamelCase } from '../utils/transformations';
 import { getCredentialTypeForUrlPattern, type UrlPatternType } from '../mcp/AccountMCPRegistry';
+import { DocsMCPServer } from '../google/DocsMCP';
+import { SheetsMCPServer } from '../google/SheetsMCP';
+import { GitHubMCPServer } from '../github/GitHubMCP';
 import type { CredentialService } from './CredentialService';
 
 interface TaskRow {
@@ -499,7 +502,6 @@ export class BoardService {
     switch (type) {
       case 'google_doc': {
         const documentId = match[1];
-        const { DocsMCPServer } = await import('../google/DocsMCP');
         const mcp = new DocsMCPServer(accessToken);
         const result = await mcp.callTool(fetchTool, { documentId });
         const data = result?.structuredContent as { title?: string } | undefined;
@@ -510,7 +512,6 @@ export class BoardService {
       }
       case 'google_sheet': {
         const spreadsheetId = match[1];
-        const { SheetsMCPServer } = await import('../google/SheetsMCP');
         const mcp = new SheetsMCPServer(accessToken);
         const result = await mcp.callTool(fetchTool, { spreadsheetId });
         const data = result?.structuredContent as { title?: string } | undefined;
@@ -521,7 +522,6 @@ export class BoardService {
       }
       case 'github_pr': {
         const [, owner, repo, prNumber] = match;
-        const { GitHubMCPServer } = await import('../github/GitHubMCP');
         const mcp = new GitHubMCPServer(accessToken);
         const result = await mcp.callTool(fetchTool, { owner, repo, pullNumber: parseInt(prNumber, 10) });
         const data = result?.structuredContent as { title?: string } | undefined;
@@ -532,7 +532,6 @@ export class BoardService {
       }
       case 'github_issue': {
         const [, owner, repo, issueNumber] = match;
-        const { GitHubMCPServer } = await import('../github/GitHubMCP');
         const mcp = new GitHubMCPServer(accessToken);
         const result = await mcp.callTool(fetchTool, { owner, repo, issueNumber: parseInt(issueNumber, 10) });
         const data = result?.structuredContent as { title?: string } | undefined;
@@ -543,7 +542,6 @@ export class BoardService {
       }
       case 'github_repo': {
         const [, owner, repo] = match;
-        const { GitHubMCPServer } = await import('../github/GitHubMCP');
         const mcp = new GitHubMCPServer(accessToken);
         const result = await mcp.callTool(fetchTool, { owner, repo });
         const data = result?.structuredContent as { title?: string; full_name?: string } | undefined;

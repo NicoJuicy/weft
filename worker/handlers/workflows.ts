@@ -5,7 +5,6 @@
 import { type AgentWorkflowParams } from '../workflows/AgentWorkflow';
 import { jsonResponse } from '../utils/response';
 import { logger } from '../utils/logger';
-import { CREDENTIAL_TYPES } from '../constants';
 import type { BoardDO } from '../BoardDO';
 
 type BoardDOStub = DurableObjectStub<BoardDO>;
@@ -53,17 +52,6 @@ export async function handleGeneratePlan(
     }, 500);
   }
 
-  // Fetch Anthropic API key
-  const anthropicApiKey = await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
-
-  if (!anthropicApiKey) {
-    await boardStub.updateWorkflowPlan(planId, { status: 'failed', result: { error: 'Anthropic API key not configured' } });
-    return jsonResponse({
-      success: false,
-      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured' },
-    }, 400);
-  }
-
   // Combine task title and description for agent
   const taskDescription = [task.title, task.description].filter(Boolean).join('\n\n') || 'No task description provided';
 
@@ -74,7 +62,6 @@ export async function handleGeneratePlan(
       taskId,
       boardId,
       taskDescription,
-      anthropicApiKey,
     };
 
     await env.AGENT_WORKFLOW.create({

@@ -210,16 +210,6 @@ export class BoardDO extends DurableObject<Env> {
 
         this.scheduleService.updateScheduledRun(runId, { status: 'running' });
 
-        const anthropicApiKey = await this.getCredentialValue(boardId, 'anthropic_api_key');
-        if (!anthropicApiKey) {
-          this.scheduleService.updateScheduledRun(runId, {
-            status: 'failed',
-            completedAt: new Date().toISOString(),
-            error: 'Missing Anthropic API key',
-          });
-          continue;
-        }
-
         const planResponse = this.workflowService.createWorkflowPlan(taskId, {
           boardId,
           summary: `Scheduled run: ${task.title}`,
@@ -236,7 +226,6 @@ export class BoardDO extends DurableObject<Env> {
             taskId,
             boardId,
             taskDescription: [task.title, task.description].filter(Boolean).join('\n\n') || 'No task description provided',
-            anthropicApiKey,
             isScheduledRun: true,
             runId,
             targetColumnId: config.targetColumnId,
@@ -480,16 +469,6 @@ export class BoardDO extends DurableObject<Env> {
 
     this.scheduleService.updateScheduledRun(runId, { status: 'running' });
 
-    const anthropicApiKey = await this.getCredentialValue(task.boardId, 'anthropic_api_key');
-    if (!anthropicApiKey) {
-      this.scheduleService.updateScheduledRun(runId, {
-        status: 'failed',
-        completedAt: new Date().toISOString(),
-        error: 'Missing Anthropic API key',
-      });
-      throw new Error('Missing Anthropic API key');
-    }
-
     const planResponse = this.workflowService.createWorkflowPlan(taskId, {
       boardId: task.boardId,
       summary: `Manual run: ${task.title}`,
@@ -515,7 +494,6 @@ export class BoardDO extends DurableObject<Env> {
         taskId,
         boardId: task.boardId,
         taskDescription: [task.title, task.description].filter(Boolean).join('\n\n') || 'No task description provided',
-        anthropicApiKey,
         isScheduledRun: true,
         runId,
         targetColumnId: config.targetColumnId,
